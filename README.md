@@ -1,5 +1,5 @@
-## Sample Flow for Torch-TensorRT
-This example shows a single connected layer that is performing a `y = 5x + 3` operation.
+## Complete Flow for Torch-TensorRT
+`SimpleNN`: shows a single fully-connected layer that is performing a `y = 5x + 3` operation.
 
 <img src="./demo.png" />
 
@@ -7,7 +7,7 @@ This example shows a single connected layer that is performing a `y = 5x + 3` op
 ### Training 
 1. Train Model
     ```sh
-    cd models
+    cd train
     python3 train.py
     ```
 
