@@ -10,6 +10,9 @@
 #include "parserOnnxConfig.h"
 #include "NvInfer.h"
 #include <cuda_runtime_api.h>
+#include <ros/ros.h>
+#include "std_msgs/Float32.h"
+
 #include "logger.cpp"
 
 class SimpleNN
@@ -26,6 +29,16 @@ public:
     bool deserializeEngineFromFile();
 
 private:
+
+    bool processInput(
+        const samplesCommon::BufferManager &buffers,
+        const int input);
+
+    bool verifyOutput(
+        const samplesCommon::BufferManager &buffers);
+    
+    void callback(const std_msgs::Float32::ConstPtr& float_msg);
+
     const std::string engine_file_;
 
     const std::string input_tensor_name_;
@@ -38,10 +51,17 @@ private:
 
     std::shared_ptr<nvinfer1::ICudaEngine> engine_;
 
-    bool processInput(
-        const samplesCommon::BufferManager &buffers,
-        const int input);
+    ros::NodeHandle nh_;
 
-    bool verifyOutput(
-        const samplesCommon::BufferManager &buffers);
+    ros::NodeHandle nh_private_;
+
+    ros::Subscriber sub_;
+
+    ros::Publisher pub_;
+
+    float cur_output_;
+
+    std::shared_ptr<samplesCommon::BufferManager> buffers_;
+
+    samplesCommon::SampleUniquePtr<nvinfer1::IExecutionContext> context_;
 };

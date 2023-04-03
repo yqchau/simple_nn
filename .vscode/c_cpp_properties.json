@@ -6,8 +6,8 @@
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/include/**",
                 "/usr/local/cuda/include/**",
-                "/usr/src/tensorrt/samples/common"
-
+                "/usr/src/tensorrt/samples/common",
+                "/opt/ros/melodic/include/**",
             ],
             "defines": [],
             "compilerPath": "/usr/bin/clang-8",

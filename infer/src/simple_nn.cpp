@@ -1,19 +1,42 @@
 #include "simple_nn.h"
 
+void SimpleNN::callback(const std_msgs::Float32::ConstPtr& float_msg)
+{
+    ROS_INFO("CALLBACK!");
+    float input = float_msg->data;
+    infer(input);
+
+    std_msgs::Float32 output_msg;
+    output_msg.data = cur_output_;
+
+    pub_.publish(output_msg);
+
+}
+
 SimpleNN::SimpleNN(
     const std::string engineFile,
     const std::string inputTensorName,
     const std::string outputTensorName) : engine_file_{engineFile},
                                           input_tensor_name_{inputTensorName},
-                                          output_tensor_name_{outputTensorName}
+                                          output_tensor_name_{outputTensorName},
+                                          nh_private_{"~"}
 {
     std::cout << "Loading parameters.." << std::endl;
     std::cout << "EngineFile: " << engine_file_ << std::endl;
     std::cout << "InputTensorName: " << input_tensor_name_ << std::endl;
     std::cout << "OutputTensorName: " << output_tensor_name_ << std::endl;
-    std::cout << "Done!\n"
-              << std::endl;
+    std::cout << "Done!\n" << std::endl;
+
+ 
+    deserializeEngineFromFile();
+
+    buffers_ = std::make_shared<samplesCommon::BufferManager>(engine_);
+    context_ = samplesCommon::SampleUniquePtr<nvinfer1::IExecutionContext>(engine_->createExecutionContext());
+    sub_ = nh_.subscribe("/input", 1, &SimpleNN::callback, this);
+    pub_ = nh_.advertise<std_msgs::Float32>("/output", 1);
 }
+
+
 
 bool SimpleNN::deserializeEngineFromFile()
 {
@@ -69,36 +92,27 @@ bool SimpleNN::deserializeEngineFromFile()
 
 bool SimpleNN::infer(const int input)
 {
-    samplesCommon::BufferManager buffers(engine_);
-
-    auto context = samplesCommon::SampleUniquePtr<nvinfer1::IExecutionContext>(
-        engine_->createExecutionContext());
-
-    if (!context)
-    {
-        return false;
-    }
 
     // ASSERT(mParams.inputTensorNames.size() == 1);
-    if (!processInput(buffers, input))
+    if (!processInput(*buffers_, input))
     {
         return false;
     }
 
     // Memcpy from host input buffers to device input buffers
-    buffers.copyInputToDevice();
+    buffers_->copyInputToDevice();
 
-    bool status = context->executeV2(buffers.getDeviceBindings().data());
+    bool status = context_->executeV2(buffers_->getDeviceBindings().data());
     if (!status)
     {
         return false;
     }
 
     // Memcpy from device output buffers to host output buffers
-    buffers.copyOutputToHost();
+    buffers_->copyOutputToHost();
 
     // Verify results
-    if (!verifyOutput(buffers))
+    if (!verifyOutput(*buffers_))
     {
         return false;
     }
@@ -113,11 +127,13 @@ bool SimpleNN::verifyOutput(const samplesCommon::BufferManager &buffers)
         buffers.getHostBuffer(
             output_tensor_name_));
 
-    sample::gLogInfo << "Output:" << std::endl;
+    // sample::gLogInfo << "Output:" << std::endl;
     for (int i = 0; i < output_size; i++)
     {
         sample::gLogInfo << "Output: " << output[i] << std::endl;
+        cur_output_ = output[i];
     }
+
 
     return true;
 }
@@ -142,12 +158,11 @@ bool SimpleNN::processInput(const samplesCommon::BufferManager &buffers, const i
 
 int main(int argc, char **argv)
 {
+    ros::init(argc, argv, "trt_inference_node");
 
-    assert(argc == 3);
+    // const int input{std::stoi(argv[2])};
 
-    const int input{std::stoi(argv[2])};
-
-    const std::string engine_file{argv[1]};
+    const std::string engine_file = "/home/deepspeed/simple_nn/models/simple_nn.engine";
 
     const std::string input_tensor_name = "input";
 
@@ -158,9 +173,9 @@ int main(int argc, char **argv)
         input_tensor_name,
         output_tensor_name);
 
-    model.deserializeEngineFromFile();
+    // model.infer(input);
 
-    model.infer(input);
+    ros::spin();
 
     return 0;
 }

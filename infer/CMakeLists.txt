@@ -6,6 +6,11 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Ofast -Wfatal-errors -
 
 # find_package(CUDA REQUIRED)
 
+find_package(catkin REQUIRED COMPONENTS
+  roscpp
+  std_msgs
+)
+
 include_directories(${PROJECT_SOURCE_DIR}/include)
 link_directories(${PROJECT_SOURCE_DIR}/include)
 
@@ -26,10 +31,15 @@ link_directories(/usr/local/cuda/lib64)
 include_directories(/usr/src/tensorrt/samples/common)
 link_directories(/usr/src/tensorrt/samples/common)
 
-
+catkin_package(
+INCLUDE_DIRS include
+CATKIN_DEPENDS roscpp std_msgs
+)
+include_directories(${catkin_INCLUDE_DIRS})
 add_executable(simple_nn src/simple_nn.cpp)
 target_link_libraries(simple_nn
 nvinfer
 cudart
 nvonnxparser
+${catkin_LIBRARIES}
 )
